@@ -11,13 +11,13 @@ public class PlayerController : MonoBehaviour
     public LayerMask pickUpMask; 
     [SerializeField] private float RunSpeed;
     [SerializeField] private Vector2 _inputVector = Vector2.zero;
-    
-    
+
+
+    private PlayerStats _playerStats;
     private Animator _playerAnimator;
     private Transform _playerTransform;
-    private bool PickingUp = false; 
-    private bool Running = false; 
-    private CharacterController _characterController;
+    private bool _pickingUp = false; 
+    private bool _running = false;
     private Vector3 _moveDirection = Vector3.zero;
     private static readonly int IsRunning = Animator.StringToHash("isRunning");
     private static readonly int PickUp = Animator.StringToHash("PickUp");
@@ -26,7 +26,12 @@ public class PlayerController : MonoBehaviour
     {
         _playerTransform = transform;
         _playerAnimator = GetComponent<Animator>();
-        //_characterController = GetComponent<CharacterController>();
+        _playerStats = GetComponent<PlayerStats>();
+    }
+
+    public void Start()
+    {
+        _playerStats.CurrentHealth = _playerStats.MaxHealth;
     }
 
     public void OnMove(InputValue value)
@@ -35,13 +40,13 @@ public class PlayerController : MonoBehaviour
         
         if (_inputVector.sqrMagnitude > 0)
         {
-            if (PickingUp) return;
-            Running = true;
+            if (_pickingUp) return;
+            _running = true;
             _playerAnimator.SetBool(IsRunning, true);
         }
         else
         {
-            Running = false;
+            _running = false;
             _playerAnimator.SetBool(IsRunning, false);
         }
     }
@@ -50,10 +55,22 @@ public class PlayerController : MonoBehaviour
     {
         if (value.isPressed)
         {
-            if (Running) return; 
-            if (PickingUp) return; 
+            if (_running) return; 
+            if (_pickingUp) return; 
             StartCoroutine(PickUpItem()); 
             _playerAnimator.SetTrigger(PickUp);
+        }
+    }
+
+    public void OnStun(InputValue value)
+    {
+        if (value.isPressed)
+        {
+            if (_playerStats.HasStunLoaded)
+            {
+                // Stun Enemies Around Player
+                _playerStats.HasStunLoaded = false;
+            }
         }
     }
     
@@ -61,15 +78,15 @@ public class PlayerController : MonoBehaviour
     {
         _moveDirection = _playerTransform.forward * _inputVector.y + _playerTransform.right * _inputVector.x;
         Vector3 movementDirection = _moveDirection * (RunSpeed * Time.deltaTime);
-        if (PickingUp) return;
+        if (_pickingUp) return;
         if (_inputVector.sqrMagnitude > 0)
         {
-            Running = true;
+            _running = true;
             _playerAnimator.SetBool(IsRunning, true);
         }
         else
         {
-            Running = false;
+            _running = false;
             _playerAnimator.SetBool(IsRunning, false);
         }
         _playerTransform.position += movementDirection;
@@ -77,10 +94,22 @@ public class PlayerController : MonoBehaviour
 
     IEnumerator PickUpItem()
     {
-        PickingUp = true;
+        _pickingUp = true;
         PickUpCircleCast();
         yield return new WaitForSeconds(5.0f);
-        PickingUp = false;
+        _pickingUp = false;
+    }
+
+    IEnumerator SpeedBoost(GameObject flower)
+    {
+        Debug.Log("Boosting Player Speed");
+        Destroy(flower);
+        RunSpeed = 6.0f;
+        _playerStats.HasSpeedBoost = true;
+        yield return new WaitForSeconds(3.0f);
+        Debug.Log("Reducing Player Speed");
+        _playerStats.HasSpeedBoost = false;
+        RunSpeed = 3.0f;
     }
 
 
@@ -92,6 +121,7 @@ public class PlayerController : MonoBehaviour
         {
             Collider collider = allColliders[0];
             Destroy(collider.transform.parent.gameObject);
+            _playerStats.CurrentCactusCount++;
             Debug.Log("Cactus Found");
         }
     }
@@ -102,17 +132,35 @@ public class PlayerController : MonoBehaviour
         switch (otherTag)
         {
             case "LifeFlower":
-                Debug.Log("Picked Up LifeFlower");
+                if (_playerStats.CurrentHealth < _playerStats.MaxHealth)
+                {
+                    AddHealth(other.gameObject);
+                }
                 break;
             case "StunFlower":
-                Debug.Log("Picked Up StunFlower");
+                if (!_playerStats.HasStunLoaded)
+                {
+                    _playerStats.HasStunLoaded = true;
+                    Destroy(other.gameObject);
+                } 
                 break;
             case "SpeedFlower":
-                Debug.Log("Picked Up SpeedFlower");
+                if (!_playerStats.HasSpeedBoost) StartCoroutine(SpeedBoost(other.gameObject));
                 break;
             default:
                 Debug.Log("Unknown Collider Trigger");
                 break;
         }
+    }
+
+    private void AddHealth(GameObject flower)
+    {
+        _playerStats.CurrentHealth += 10;
+        Destroy(flower);
+    }
+
+    public void DamagePlayer(int dmg)
+    {
+        _playerStats.CurrentHealth -= dmg;
     }
 }
