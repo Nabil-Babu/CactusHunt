@@ -9,13 +9,15 @@ public class PlayerController : MonoBehaviour
 
     public GameObject pickUpCast;
     public LayerMask pickUpMask; 
+    public LayerMask StunMask; 
     [SerializeField] private float RunSpeed;
     [SerializeField] private Vector2 _inputVector = Vector2.zero;
-
-
+    [SerializeField] private ParticleSystem _particleSystem;
+    
     private PlayerStats _playerStats;
     private Animator _playerAnimator;
     private Transform _playerTransform;
+    
     private bool _pickingUp = false; 
     private bool _running = false;
     private Vector3 _moveDirection = Vector3.zero;
@@ -68,7 +70,9 @@ public class PlayerController : MonoBehaviour
         {
             if (_playerStats.HasStunLoaded)
             {
-                // Stun Enemies Around Player
+                
+                StunArea();
+                _particleSystem.Play();
                 _playerStats.HasStunLoaded = false;
             }
         }
@@ -122,7 +126,22 @@ public class PlayerController : MonoBehaviour
             Collider collider = allColliders[0];
             Destroy(collider.transform.parent.gameObject);
             _playerStats.CurrentCactusCount++;
+            if (_playerStats.CurrentCactusCount == 10)
+            {
+                GameManager.instance.GameWon();
+            }
             Debug.Log("Cactus Found");
+        }
+    }
+
+    void StunArea()
+    {
+        Collider[] allColliders;
+        allColliders = Physics.OverlapSphere(pickUpCast.transform.position, 2.0f, StunMask);
+        if (allColliders.Length > 0)
+        {
+            Collider collider = allColliders[0];
+            collider.gameObject.GetComponent<EnemyController>().Stun();
         }
     }
 
@@ -156,11 +175,17 @@ public class PlayerController : MonoBehaviour
     private void AddHealth(GameObject flower)
     {
         _playerStats.CurrentHealth += 10;
+        if(_playerStats.CurrentHealth > _playerStats.MaxHealth) _playerStats.CurrentHealth = _playerStats.MaxHealth;
         Destroy(flower);
     }
 
     public void DamagePlayer(int dmg)
     {
         _playerStats.CurrentHealth -= dmg;
+        if (_playerStats.CurrentHealth <= 0)
+        {
+            _playerStats.CurrentHealth = 0;
+            GameManager.instance.GameLost();
+        }
     }
 }

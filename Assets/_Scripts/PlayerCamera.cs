@@ -30,6 +30,7 @@ public class PlayerCamera : MonoBehaviour
     public void OnLook(InputValue value)
     {
         lookDelta = value.Get<Vector2>();
+        if (GameManager.instance.GamePaused) return;
         _followTargetTransform.rotation *=
             Quaternion.AngleAxis(
                 Mathf.Lerp(_previousMouseDelta.x, lookDelta.x, 1f / horizontalDamping) * cameraRotationSpeed,

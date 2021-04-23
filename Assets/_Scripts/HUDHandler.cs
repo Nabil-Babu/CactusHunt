@@ -10,6 +10,8 @@ public class HUDHandler : Singleton<HUDHandler>
     public TextMeshProUGUI StunAlert;
     public TextMeshProUGUI GameOver;
     public TextMeshProUGUI Victory;
+    public GameObject PauseMenu;
+    
     public int CurrentCactusCount
     {
         set => CactusCount.text = value.ToString();
