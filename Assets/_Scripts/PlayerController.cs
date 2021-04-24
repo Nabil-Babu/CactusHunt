@@ -70,7 +70,7 @@ public class PlayerController : MonoBehaviour
         {
             if (_playerStats.HasStunLoaded)
             {
-                
+                AudioManager.instance.PlayStunEffect();
                 StunArea();
                 _particleSystem.Play();
                 _playerStats.HasStunLoaded = false;
